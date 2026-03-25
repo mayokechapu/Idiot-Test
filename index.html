@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心理測驗系統</title>
+    <style>
+        body { font-family: 'PingFang HK', sans-serif; background: #fdf6e3; color: #5c4033; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 90%; max-width: 450px; text-align: center; }
+        button { width: 100%; padding: 1rem; margin: 0.5rem 0; border: 2px solid #eee; border-radius: 0.8rem; background: white; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        button:hover { background: #f8f1e9; border-color: #d2b48c; }
+        .hidden { display: none; }
+        #result-name { color: #8b4513; font-size: 2rem; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-box">
+        <h1 id="quiz-title">載入中...</h1>
+        <p id="question-text"></p>
+        <div id="options-container"></div>
+    </div>
+
+    <div id="result-box" class="hidden">
+        <h2>你的測驗結果是...</h2>
+        <h1 id="result-name"></h1>
+        <p id="result-desc"></p>
+        <button onclick="location.reload()">再玩一次</button>
+    </div>
+</div>
+
+<script>
+    let quizData = null;
+    let currentIdx = 0;
+    let scores = {};
+
+    // 1. 從網址取得測驗名稱 (?quiz=bread)
+    const params = new URLSearchParams(window.location.search);
+    const quizName = params.get('quiz') || 'bread'; 
+
+    // 2. 抓取 JSON 資料
+    fetch(`./quizzes/${quizName}.json`)
+        .then(res => res.json())
+        .then(data => {
+            quizData = data;
+            document.getElementById('quiz-title').innerText = data.title;
+            // 初始化計分表
+            Object.keys(data.results).forEach(key => scores[key] = 0);
+            renderQuestion();
+        })
+        .catch(() => document.getElementById('quiz-title').innerText = "找不到測驗 T_T");
+
+    function renderQuestion() {
+        const q = quizData.questions[currentIdx];
+        document.getElementById('question-text').innerText = q.q;
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt.text;
+            btn.onclick = () => {
+                scores[opt.type]++;
+                currentIdx++;
+                if (currentIdx < quizData.questions.length) renderQuestion();
+                else showResult();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function showResult() {
+        document.getElementById('quiz-box').classList.add('hidden');
+        const resBox = document.getElementById('result-box');
+        resBox.classList.remove('hidden');
+        
+        const winner = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+        document.getElementById('result-name').innerText = winner;
+        document.getElementById('result-desc').innerText = quizData.results[winner];
+    }
+</script>
+</body>
+</html>
